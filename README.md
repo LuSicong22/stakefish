@@ -1,6 +1,6 @@
-# Dockerized Node.js Application
+## Introduction
 
-This is a Dockerized Node.js application with a PostgreSQL database, orchestrated using Docker Compose.
+This project provides a Dockerized Node.js application showcasing basic functionalities and database interaction.
 
 ## Prerequisites
 
@@ -52,10 +52,11 @@ docker-compose up -d --build
 
 ## Usage
 
-- The Node.js application exposes a REST API at http://localhost:3000.
-- The available endpoints include:
-  - `/v1/tools/lookup`: Lookup IP addresses for a given domain.
-  - `/v1/tools/validate`: Validate an IP address.
-  - `/v1/history`: View recent lookup history.
-  - `/health`: Check the health status of the application.
-- Prometheus metrics are exposed at http://localhost:3000/metrics.
+The available endpoints include:
+
+- `GET /`: Returns basic information about the application version, current date, and whether it's running under Kubernetes.
+- `GET /v1/tools/lookup`: Takes a domain parameter and performs a DNS lookup, returning details and storing them in the database if successful.
+- `POST /v1/tools/validate`: Takes an ip parameter and validates its format.
+- `GET /v1/history`: Retrieves the last 20 entries from the database containing DNS lookup history.
+- `GET /metrics`: Exposes Prometheus metrics for monitoring.
+- `GET /health`: Returns a simple "OK" message for health checks.
