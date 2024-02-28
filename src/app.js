@@ -1,20 +1,33 @@
 const express = require("express");
-const http = require("http");
-const https = require("https");
 const dns = require("dns");
-const { Pool } = require("pg"); // Replace with your preferred database library
+const { Pool } = require("pg");
+const promClient = require('prom-client');
+require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Database connection (replace with your credentials)
-const pool = new Pool({
-  user: "your_username",
-  host: "your_host",
-  database: "your_database",
-  password: "your_password",
+// PostgreSQL database connection
+const dbConfig = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
   port: 5432,
 });
+
+// PostgreSQL database connection with error handling
+let pool;
+try {
+  pool = new Pool(dbConfig);
+} catch (error) {
+  console.error("Error creating database pool:", error);
+  process.exit(1);
+}
+
+// Prometheus metrics
+const promRegistry = new promClient.Registry();
+promClient.collectDefaultMetrics({ register: promRegistry });
 
 // Check if running under Kubernetes
 const isKubernetes = process.env.KUBERNETES_SERVICE_HOST !== undefined;
@@ -44,7 +57,7 @@ app.get("/v1/tools/lookup", async (req, res) => {
   }
 
   try {
-    const addresses = await dns.lookup(domain, { family: 4 }); // Only IPv4
+    const addresses = await dns.promises.lookup(domain, { family: 4 }); // Only IPv4
     const query = {
       domain,
       client_ip: req.ip,
@@ -92,14 +105,19 @@ app.get("/v1/history", async (req, res) => {
 });
 
 // Prometheus metrics endpoint
-app.get("/metrics", (req, res) => {
-  // Implement your custom metrics here
-  res.end("Your metrics here");
+app.get("/metrics", async (req, res) => {
+  try {
+    const metrics = await promRegistry.metrics();
+    res.set('Content-Type', promClient.register.contentType);
+    res.end(metrics);
+  } catch (error) {
+    res.status(500).end(error);
+  }
 });
 
 // Health endpoint
 app.get("/health", (req, res) => {
-  res.send("OK");
+  res.status(200).send("OK");
 });
 
 // Graceful shutdown
